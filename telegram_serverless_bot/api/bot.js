@@ -134,6 +134,7 @@ export default async function handler(req, res) {
 Use the following pieces of retrieved context to answer the user's question accurately.
 If the answer is not in the context, say that you don't know based on the document.
 Keep your answer concise and accurate.
+Always answer in the same language that the user used to ask the question (e.g. if they ask in Persian, answer in Persian).
 
 Context:
 {context}`;
