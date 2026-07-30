@@ -44,12 +44,30 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true });
     }
 
-    // Rate Limiting Logic (Upstash Redis)
+    // Rate Limiting & User Tracking Logic (Upstash Redis)
     if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
       const redis = new Redis({
         url: process.env.KV_REST_API_URL,
         token: process.env.KV_REST_API_TOKEN,
       });
+
+      // Track unique users
+      await redis.sadd('unique_users', chatId);
+
+      // Secret /stats command to see how many people use the bot
+      if (userQuery === '/stats') {
+        const totalUsers = await redis.scard('unique_users');
+        const telegramApiUrl = `https://api.telegram.org/bot${telegramBotToken}/sendMessage`;
+        await fetch(telegramApiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId,
+            text: `📊 **Bot Statistics**\n\nTotal Unique Users: ${totalUsers}`
+          })
+        });
+        return res.status(200).json({ success: true });
+      }
 
       const today = new Date().toISOString().split('T')[0];
       const rateLimitKey = `ratelimit:${chatId}:${today}`;
