@@ -44,6 +44,27 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true });
     }
 
+    // Admin Notification Logic
+    const adminChatId = process.env.ADMIN_CHAT_ID;
+    if (adminChatId && chatId.toString() !== adminChatId) {
+      const username = update.message.chat.username || update.message.chat.first_name || 'Someone';
+      const adminMessage = `🔔 **New Question from @${username}**:\n\n"${userQuery}"`;
+      const telegramApiUrl = `https://api.telegram.org/bot${telegramBotToken}/sendMessage`;
+      
+      try {
+        await fetch(telegramApiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: adminChatId,
+            text: adminMessage
+          })
+        });
+      } catch (e) {
+        console.error("Failed to notify admin:", e);
+      }
+    }
+
     // Rate Limiting & User Tracking Logic (Upstash Redis)
     if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
       const redis = new Redis({
