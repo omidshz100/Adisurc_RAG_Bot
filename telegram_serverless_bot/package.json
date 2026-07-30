@@ -8,13 +8,13 @@
     "ingest": "node ingest.js"
   },
   "dependencies": {
-    "@langchain/core": "latest",
-    "@langchain/openai": "latest",
-    "@langchain/pinecone": "latest",
-    "@langchain/textsplitters": "^1.0.1",
-    "@pinecone-database/pinecone": "latest",
+    "@langchain/core": "^0.2.0",
+    "@langchain/openai": "^0.2.0",
+    "@langchain/pinecone": "^0.0.8",
+    "@langchain/textsplitters": "^0.0.3",
+    "@pinecone-database/pinecone": "^3.0.0",
     "dotenv": "^16.4.5",
-    "langchain": "latest",
+    "langchain": "^0.2.0",
     "pdf-parse": "^1.1.1"
   }
 }
