@@ -41,6 +41,13 @@ npm run ingest
 ### 4. Deploy
 You can now deploy `bot.js` to Vercel, Cloudflare, or directly to Telegram Serverless. Don't forget to set up your Telegram webhook URL pointing to your deployed function!
 
+### 5. Admin & Secret Commands
+The serverless bot includes built-in protection against abuse (via Upstash Redis rate limiting) and allows admins to track usage:
+
+- **Admin Notifications**: Add `ADMIN_CHAT_ID` in your Vercel Environment Variables. When someone asks the bot a question, you will receive a direct message in Telegram containing both the user's question and the bot's generated answer.
+- `/delamDeltange`: A secret command that only the bot admin knows. Send this to the bot to receive a statistics dashboard showing the total number of unique users who have ever interacted with the bot.
+- `/deltangamLimit <number>`: The bot defaults to a strict limit of 3 questions per user per day. To change this globally across all users, send this secret command (e.g., `/deltangamLimit 10`).
+
 ---
 
 ## 🐍 How to Run the Local Bot (Python)
