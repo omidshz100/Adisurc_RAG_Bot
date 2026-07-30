@@ -54,8 +54,8 @@ export default async function handler(req, res) {
       // Track unique users
       await redis.sadd('unique_users', chatId);
 
-      // Secret /stats command to see how many people use the bot
-      if (userQuery === '/stats') {
+      // Secret command to see how many people use the bot
+      if (userQuery === '/delamDeltange') {
         const totalUsers = await redis.scard('unique_users');
         const telegramApiUrl = `https://api.telegram.org/bot${telegramBotToken}/sendMessage`;
         await fetch(telegramApiUrl, {
