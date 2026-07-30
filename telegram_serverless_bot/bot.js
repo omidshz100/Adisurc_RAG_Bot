@@ -1,0 +1,81 @@
+import { Pinecone } from '@pinecone-database/pinecone';
+import { OpenAIEmbeddings } from '@langchain/openai';
+import { PineconeStore } from '@langchain/pinecone';
+import { ChatOpenAI } from '@langchain/openai';
+import { createRetrievalChain } from 'langchain/chains/retrieval';
+import { createStuffDocumentsChain } from 'langchain/chains/combine_documents';
+import { ChatPromptTemplate } from '@langchain/core/prompts';
+
+export default async function handler(req, res) {
+  // Only accept POST requests
+  if (req.method !== 'POST') {
+    return res.status(200).send('Bot is running. Please use POST for Webhooks.');
+  }
+
+  try {
+    const update = req.body;
+    
+    // Check if the update contains a text message
+    if (!update || !update.message || !update.message.text) {
+      return res.status(200).send('Not a text message');
+    }
+
+    const chatId = update.message.chat.id;
+    const userQuery = update.message.text;
+    const telegramBotToken = process.env.TELEGRAM_BOT_TOKEN;
+
+    // Acknowledge receipt to avoid Telegram retrying
+    // For Vercel/Serverless, we can reply immediately or process and then send via API.
+    // Given the LLM might take a few seconds, it's safer to send HTTP request to Telegram directly.
+
+    // 1. Set up Pinecone & Langchain
+    const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY });
+    const pineconeIndex = pinecone.Index(process.env.PINECONE_INDEX_NAME);
+
+    const embeddings = new OpenAIEmbeddings({ openAIApiKey: process.env.OPENAI_API_KEY });
+    const vectorStore = await PineconeStore.fromExistingIndex(embeddings, { pineconeIndex });
+    const retriever = vectorStore.asRetriever({ k: 4 });
+
+    const llm = new ChatOpenAI({
+      modelName: "gpt-4o",
+      temperature: 0,
+      openAIApiKey: process.env.OPENAI_API_KEY
+    });
+
+    const systemPrompt = `You are an assistant for answering questions about the A.Di.S.U.R.C. Call for Applications document.
+Use the following pieces of retrieved context to answer the user's question accurately.
+If the answer is not in the context, say that you don't know based on the document.
+Keep your answer concise and accurate.
+
+Context:
+{context}`;
+
+    const prompt = ChatPromptTemplate.fromMessages([
+      ["system", systemPrompt],
+      ["human", "{input}"]
+    ]);
+
+    const questionAnswerChain = await createStuffDocumentsChain({ llm, prompt });
+    const ragChain = await createRetrievalChain({ retriever, combineDocsChain: questionAnswerChain });
+
+    // 2. Generate the answer
+    const response = await ragChain.invoke({ input: userQuery });
+    const answer = response.answer || "Sorry, I couldn't generate an answer.";
+
+    // 3. Send response back to Telegram via HTTP API
+    const telegramApiUrl = `https://api.telegram.org/bot${telegramBotToken}/sendMessage`;
+    await fetch(telegramApiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: answer
+      })
+    });
+
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    console.error("Error processing request:", error);
+    return res.status(500).json({ error: error.message });
+  }
+}
