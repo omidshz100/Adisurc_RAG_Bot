@@ -122,6 +122,28 @@ Context:
     return res.status(200).json({ success: true });
   } catch (error) {
     console.error("Error processing request:", error);
+
+    // If we have the chatId, try to inform the user that something went wrong
+    const update = req.body;
+    if (update && update.message && update.message.chat && update.message.chat.id) {
+      const chatId = update.message.chat.id;
+      const telegramBotToken = process.env.TELEGRAM_BOT_TOKEN;
+      const telegramApiUrl = `https://api.telegram.org/bot${telegramBotToken}/sendMessage`;
+      
+      try {
+        await fetch(telegramApiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId,
+            text: "I'm sorry, I encountered an internal error. The server might be out of API credits or experiencing downtime. Please try again later!"
+          })
+        });
+      } catch (e) {
+        console.error("Failed to send error message:", e);
+      }
+    }
+
     return res.status(500).json({ error: error.message });
   }
 }
