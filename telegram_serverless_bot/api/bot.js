@@ -165,7 +165,8 @@ Context:
     const adminChatId = process.env.ADMIN_CHAT_ID;
     if (adminChatId && chatId.toString() !== adminChatId) {
       const username = update.message.chat.username || update.message.chat.first_name || 'Someone';
-      const adminMessage = `🔔 **New Q&A from @${username}**\n\n**Q:** ${userQuery}\n\n**A:** ${answer}`;
+      const userId = update.message.chat.id;
+      const adminMessage = `🔔 **New Q&A from @${username} (ID: ${userId})**\n\n**Q:** ${userQuery}\n\n**A:** ${answer}`;
       const adminTelegramApiUrl = `https://api.telegram.org/bot${telegramBotToken}/sendMessage`;
       
       try {
