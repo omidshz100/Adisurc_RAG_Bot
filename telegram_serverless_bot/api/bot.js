@@ -1,4 +1,5 @@
 import { Pinecone } from '@pinecone-database/pinecone';
+import { Redis } from '@upstash/redis';
 import { OpenAIEmbeddings } from '@langchain/openai';
 import { PineconeStore } from '@langchain/pinecone';
 import { ChatOpenAI } from '@langchain/openai';
@@ -41,6 +42,36 @@ export default async function handler(req, res) {
         })
       });
       return res.status(200).json({ success: true });
+    }
+
+    // Rate Limiting Logic (Upstash Redis)
+    if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+      const redis = new Redis({
+        url: process.env.KV_REST_API_URL,
+        token: process.env.KV_REST_API_TOKEN,
+      });
+
+      const today = new Date().toISOString().split('T')[0];
+      const rateLimitKey = `ratelimit:${chatId}:${today}`;
+
+      const usageCount = await redis.incr(rateLimitKey);
+      
+      if (usageCount === 1) {
+        await redis.expire(rateLimitKey, 86400); // Expire in 24 hours
+      }
+
+      if (usageCount > 3) {
+        const telegramApiUrl = `https://api.telegram.org/bot${telegramBotToken}/sendMessage`;
+        await fetch(telegramApiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId,
+            text: "You have reached your daily limit of 3 questions to prevent abuse. Please come back tomorrow!"
+          })
+        });
+        return res.status(200).json({ success: true, limited: true });
+      }
     }
 
     // 1. Set up Pinecone & Langchain
