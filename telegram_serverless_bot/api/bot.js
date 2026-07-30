@@ -70,6 +70,25 @@ export default async function handler(req, res) {
         return res.status(200).json({ success: true });
       }
 
+      // Secret command to change the daily limit dynamically
+      if (userQuery.startsWith('/deltangamLimit ')) {
+        const newLimitStr = userQuery.split(' ')[1];
+        const newLimit = parseInt(newLimitStr);
+        if (!isNaN(newLimit) && newLimit > 0) {
+          await redis.set('global_daily_limit', newLimit);
+          const telegramApiUrl = `https://api.telegram.org/bot${telegramBotToken}/sendMessage`;
+          await fetch(telegramApiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              text: `✅ **Success!** Daily limit changed to ${newLimit} questions per user.`
+            })
+          });
+        }
+        return res.status(200).json({ success: true });
+      }
+
       const today = new Date().toISOString().split('T')[0];
       const rateLimitKey = `ratelimit:${chatId}:${today}`;
 
@@ -79,14 +98,18 @@ export default async function handler(req, res) {
         await redis.expire(rateLimitKey, 86400); // Expire in 24 hours
       }
 
-      if (usageCount > 3) {
+      // Read dynamic limit from Redis (default to 3)
+      const limitStr = await redis.get('global_daily_limit');
+      const dailyLimit = limitStr ? parseInt(limitStr) : 3;
+
+      if (usageCount > dailyLimit) {
         const telegramApiUrl = `https://api.telegram.org/bot${telegramBotToken}/sendMessage`;
         await fetch(telegramApiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             chat_id: chatId,
-            text: "You have reached your daily limit of 3 questions to prevent abuse. Please come back tomorrow!"
+            text: `You have reached your daily limit of ${dailyLimit} questions to prevent abuse. Please come back tomorrow!`
           })
         });
         return res.status(200).json({ success: true, limited: true });
