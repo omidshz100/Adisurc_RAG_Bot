@@ -28,6 +28,21 @@ export default async function handler(req, res) {
     // For Vercel/Serverless, we can reply immediately or process and then send via API.
     // Given the LLM might take a few seconds, it's safer to send HTTP request to Telegram directly.
 
+    if (userQuery === '/start') {
+      const welcomeMessage = "Welcome to the A.Di.S.U.R.C RAG Bot! 🎓\n\nI have read the official Call for Applications document. Ask me any question about the requirements, deadlines, or scholarships, and I will answer you based on the official guidelines!";
+      
+      const telegramApiUrl = `https://api.telegram.org/bot${telegramBotToken}/sendMessage`;
+      await fetch(telegramApiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: welcomeMessage
+        })
+      });
+      return res.status(200).json({ success: true });
+    }
+
     // 1. Set up Pinecone & Langchain
     const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY });
     const pineconeIndex = pinecone.Index(process.env.PINECONE_INDEX_NAME);
@@ -37,7 +52,7 @@ export default async function handler(req, res) {
     const retriever = vectorStore.asRetriever({ k: 4 });
 
     const llm = new ChatOpenAI({
-      modelName: "gpt-4o",
+      modelName: "gpt-4o-mini",
       temperature: 0,
       openAIApiKey: process.env.OPENAI_API_KEY
     });
