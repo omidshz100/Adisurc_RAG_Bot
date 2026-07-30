@@ -147,8 +147,15 @@ Context:
     const questionAnswerChain = await createStuffDocumentsChain({ llm, prompt });
     const ragChain = await createRetrievalChain({ retriever, combineDocsChain: questionAnswerChain });
 
-    // 2. Generate the answer
-    const response = await ragChain.invoke({ input: userQuery });
+    // 2. Pre-process query to map Italian jargon to English document terms for better retrieval
+    let searchQuery = userQuery;
+    searchQuery = searchQuery.replace(/fuori\s*sede/gi, "non-resident");
+    searchQuery = searchQuery.replace(/in\s*sede/gi, "resident");
+    searchQuery = searchQuery.replace(/pendolare/gi, "commuter");
+    searchQuery = searchQuery.replace(/bando/gi, "Call for Applications");
+    
+    // Generate the answer
+    const response = await ragChain.invoke({ input: searchQuery });
     const answer = response.answer || "Sorry, I couldn't generate an answer.";
 
     // 3. Send response back to Telegram via HTTP API
